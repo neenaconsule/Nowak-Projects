@@ -17,7 +17,9 @@ define(['N/search','N/runtime','N/record', "N/sftp", "N/file"],
         const afterSubmit = (scriptContext) => {
             try {
 
-                
+               
+               if (scriptContext.type == "create" || scriptContext.type == "xedit" ) {
+
                 var pfaRec= scriptContext.newRecord
 
                 var fileRef= pfaRec.getValue({
@@ -50,14 +52,13 @@ define(['N/search','N/runtime','N/record', "N/sftp", "N/file"],
                     replaceExisting: true
                 });
             
-                log.debug("con obj", conObj);
                 loadedFile.folder = 1197863;
                 loadedFile.save();
             } catch (e) {
                 log.error("Error occurred:", e);
             }
         }
-
+    }
             }catch (e) {
                 log.error("error@afterSubmit",e);
             }

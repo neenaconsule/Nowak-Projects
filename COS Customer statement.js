@@ -6,16 +6,34 @@ define(['N/ui/serverWidget', 'N/search', 'N/record', 'N/format'],
 function(ui, search, record, format) {
     function onRequest(context) {
         if (context.request.method === 'GET') {
-            var customerId = 1100;
+
+            log.debug("context**", context.request)
+var respMsg=context.request.parameters.respMsg
+
+if(respMsg && respMsg=="success"){
+    log.debug("SUCCESS CONFIRMED")
+    var form = ui.createForm({ title: 'Payment Success' });
+
+    form.addField({
+        id: 'custpage_success_message',
+        type: ui.FieldType.INLINEHTML,
+        label: ' '
+    }).defaultValue = '<h1>Payment Successful!</h1><p>Your payment has been processed successfully.</p>';
+
+    context.response.writePage(form);
+}
+else{
+
+            var customerId = 12516;
            
-            if (!customerId) {
-                context.response.write('Customer ID is required.');
-                return;
-            }
+            // if (!customerId) {
+            //     context.response.write('Customer ID is required.');
+            //     return;
+            // }
 
             // Create the form
             var form = ui.createForm({ title: 'Customer Statement' });
-            form.clientScriptFileId = '8052';
+            form.clientScriptFileId = '1288982';
             // Add fields for account information
             var customerRecord = record.load({
                 type: record.Type.CUSTOMER,
@@ -28,6 +46,10 @@ function(ui, search, record, format) {
                 label: 'Name'
             }).updateDisplayType({
                 displayType: ui.FieldDisplayType.INLINE
+            }).updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDE
+            }).updateBreakType({
+                breakType : ui.FieldBreakType.STARTROW
             }).defaultValue = customerRecord.getValue('companyname');
 
             form.addField({
@@ -36,6 +58,10 @@ function(ui, search, record, format) {
                 label: 'Billing Address'
             }).updateDisplayType({
                 displayType: ui.FieldDisplayType.INLINE
+            }).updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDE
+            }).updateBreakType({
+                breakType : ui.FieldBreakType.STARTROW
             }).defaultValue = customerRecord.getValue('billaddress');
 
             form.addField({
@@ -44,37 +70,90 @@ function(ui, search, record, format) {
                 label: 'E-mail Address'
             }).updateDisplayType({
                 displayType: ui.FieldDisplayType.INLINE
+            }).updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDE
+            }).updateBreakType({
+                breakType : ui.FieldBreakType.STARTROW
             }).defaultValue = customerRecord.getValue('email');
-
+            
             form.addField({
                 id: 'custpage_phone',
                 type: ui.FieldType.TEXT,
                 label: 'Phone'
             }).updateDisplayType({
                 displayType: ui.FieldDisplayType.INLINE
+            }).updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDE
+            }).updateBreakType({
+                breakType : ui.FieldBreakType.STARTROW
             }).defaultValue = customerRecord.getValue('phone');
 
+            form.addField({
+                id: 'custpage_internalid',
+                type: ui.FieldType.INTEGER,
+                label: 'ID'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDE
+            }).updateBreakType({
+                breakType : ui.FieldBreakType.STARTROW
+            }).defaultValue = customerId
             // form.addField({
-            //     id: 'custpage_account_balance',
-            //     type: ui.FieldType.CURRENCY,
-            //     label: 'Account Balance'
-            // }).updateDisplayType({
-            //     displayType: ui.FieldDisplayType.INLINE
-            // }).defaultValue = customerRecord.getValue('balance');
+            //     id: 'custpage_checkbox',
+            //     type: ui.FieldType.CHECKBOX,
+            //     label: 'Edit Card',
+            //   //  container: 'paymentgroup'
+            // }).defaultValue="F";
+
+            form.addSubtab({
+                id : 'subtabid',
+                label : 'Open Transactions',
+                
+            });
+
+            form.addField({
+                id: 'custpage_account_balance',
+                type: ui.FieldType.CURRENCY,
+                label: 'Account Balance',
+                container: 'subtabid'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.INLINE
+            }).defaultValue = customerRecord.getValue('balance');
+            var paySelect= form.addField({
+                id: 'custpage_payselect',
+                type: ui.FieldType.SELECT,
+                label: 'Payment Options',
+                container: 'subtabid'
+            })
+            paySelect.addSelectOption({
+                value: 'payselectedinv',
+                text: 'Pay Selected Invoices'
+            });
+            paySelect.addSelectOption({
+                value: 'payselectfull',
+                text: 'Pay Full Balance'
+            });
+            paySelect.addSelectOption({
+                value: 'payselectnintyplus',
+                text: 'Pay 91+ Day Balance'
+            });
+           
 
             // Add sublist for open transactions
             var sublist = form.addSublist({
                 id: 'custpage_open_transactions',
                 type: ui.SublistType.LIST,
-                label: 'Open Transactions'
-            });
-            form.addField({
-                id: 'custpage_account_balance',
-                type: ui.FieldType.CURRENCY,
-                label: 'Account Balance'
+                label: 'Open Transactions',
+                tab: 'subtabid'
+            })
+            sublist.addField({
+                id: 'custpage_intid',
+                type: ui.FieldType.TEXT,
+                label: 'Internal ID'
             }).updateDisplayType({
-                displayType: ui.FieldDisplayType.INLINE
-            }).defaultValue = customerRecord.getValue('balance');
+                displayType: ui.FieldDisplayType.HIDDEN
+            });
 
             sublist.addField({
                 id: 'custpage_document_number',
@@ -136,8 +215,10 @@ function(ui, search, record, format) {
 
             sublist.addField({
                 id: 'custpage_payment_amount',
-                type: ui.FieldType.TEXT,
+                type: ui.FieldType.CURRENCY,
                 label: 'Payment Amount'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.ENTRY
             });
 
             // Add new fields for aging buckets
@@ -176,6 +257,13 @@ function(ui, search, record, format) {
             // Retrieve and populate open transactions
             var transactions = getOpenTransactions(customerId);
             for (var i = 0; i < transactions.length; i++) {
+
+                sublist.setSublistValue({
+                    id: 'custpage_intid',
+                    line: i,
+                    value: transactions[i].internalIdTransaction
+                });
+
                 sublist.setSublistValue({
                     id: 'custpage_document_number',
                     line: i,
@@ -251,83 +339,92 @@ function(ui, search, record, format) {
                 
                 // Select to Pay checkbox and Payment Amount will be user input
             }
+
+
+            var mainTab = form.addTab({
+                id: 'custpage_maintab',
+                label: 'Total Summary'
+            });
             form.addField({
                 id: 'custpage_total_invoice_payments',
                 type: ui.FieldType.CURRENCY,
-                label: 'Total Invoice Payments'
+                label: 'Total Invoice Payments',
+                container : 'custpage_maintab'
             }).updateDisplayType({
-                displayType: ui.FieldDisplayType.INLINE
+                displayType: ui.FieldDisplayType.ENTRY
             }).defaultValue = '0.00';
 
-            form.addField({
-                id: 'custpage_total_debit_memo_payments',
-                type: ui.FieldType.CURRENCY,
-                label: 'Total Debit Memo Payments'
-            }).updateDisplayType({
-                displayType: ui.FieldDisplayType.INLINE
-            }).defaultValue = '0.00';
+            
 
             form.addField({
                 id: 'custpage_total_credit_memos_applied',
                 type: ui.FieldType.CURRENCY,
-                label: 'Total Credit Memos Applied'
+                label: 'Total Credit Memos Applied',
+                container : 'custpage_maintab'
             }).updateDisplayType({
-                displayType: ui.FieldDisplayType.INLINE
+                displayType: ui.FieldDisplayType.ENTRY
             }).defaultValue = '0.00';
 
             form.addField({
                 id: 'custpage_total_payment_amount',
                 type: ui.FieldType.CURRENCY,
-                label: 'Total Payment Amount'
+                label: 'Total Payment Amount',
+                container : 'custpage_maintab'
             }).updateDisplayType({
-                displayType: ui.FieldDisplayType.INLINE
+                displayType: ui.FieldDisplayType.ENTRY
             }).defaultValue = '0.00';
 
             // Add submit button
-            form.addSubmitButton({
-                label: 'Pay Selected Invoices'
+            form.addButton({
+                id: 'custpage_payselectedinv',
+                label: 'Pay Selected Invoices',
+                functionName: 'openCreditCardPopup'
             });
+
+      
+    
             context.response.writePage(form);
-
-        } else {
-            // Handle POST request (form submission)
-            var request = context.request;
-            var selectedPayments = [];
-            var totalInvoicePayments = 0;
-            var totalDebitMemoPayments = 0;
-            var totalCreditMemosApplied = 0;
-            var lineCount = request.getLineCount({ sublistId: 'custpage_open_transactions' });
-
-            for (var i = 0; i < lineCount; i++) {
-                var selectToPay = request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_select_to_pay', line: i });
-                if (selectToPay === 'T') {
-                    var paymentAmount = parseFloat(request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_document_amount', line: i }));
-                    var transactionType = request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_transaction_type', line: i });
-                    selectedPayments.push({
-                        documentNumber: request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_document_number', line: i }),
-                        paymentAmount: paymentAmount
-                    });
-
-                    // Calculate totals
-                    if (transactionType === 'Invoice') {
-                        totalInvoicePayments += paymentAmount;
-                    } else if (transactionType === 'Debit Memo') {
-                        totalDebitMemoPayments += paymentAmount;
-                    } else if (transactionType === 'Credit Memo') {
-                        totalCreditMemosApplied += paymentAmount;
-                    }
-                }
-            }
-
-            var totalPaymentAmount = totalInvoicePayments + totalDebitMemoPayments - totalCreditMemosApplied;
-
-            // Process selected payments (e.g., create a payment record)
-            context.response.write('Selected payments processed: ' + JSON.stringify(selectedPayments));
-            context.response.write('<br/>Total Invoice Payments: ' + totalInvoicePayments.toFixed(2));
-            context.response.write('<br/>Total Debit Memo Payments: ' + totalDebitMemoPayments.toFixed(2));
-            context.response.write('<br/>Total Credit Memos Applied: ' + totalCreditMemosApplied.toFixed(2));
-            context.response.write('<br/>Total Payment Amount: ' + totalPaymentAmount.toFixed(2));
         }
+        } 
+        // else {
+        //     // Handle POST request (form submission)
+        //     var request = context.request;
+        //     var selectedPayments = [];
+        //     var totalInvoicePayments = 0;
+        //     var totalDebitMemoPayments = 0;
+        //     var totalCreditMemosApplied = 0;
+        //     var lineCount = request.getLineCount({ sublistId: 'custpage_open_transactions' });
+
+        //     for (var i = 0; i < lineCount; i++) {
+        //         var selectToPay = request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_select_to_pay', line: i });
+        //         if (selectToPay === 'T') {
+        //             var paymentAmount = parseFloat(request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_document_amount', line: i }));
+        //             var transactionType = request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_transaction_type', line: i });
+        //             selectedPayments.push({
+        //                 documentNumber: request.getSublistValue({ sublistId: 'custpage_open_transactions', fieldId: 'custpage_document_number', line: i }),
+        //                 paymentAmount: paymentAmount
+        //             });
+
+        //             // Calculate totals
+        //             if (transactionType === 'Invoice') {
+        //                 totalInvoicePayments += paymentAmount;
+        //             } else if (transactionType === 'Debit Memo') {
+        //                 totalDebitMemoPayments += paymentAmount;
+        //             } else if (transactionType === 'Credit Memo') {
+        //                 totalCreditMemosApplied += paymentAmount;
+        //             }
+        //         }
+        //     }
+
+        //     var totalPaymentAmount = totalInvoicePayments + totalDebitMemoPayments - totalCreditMemosApplied;
+
+        //     // Process selected payments (e.g., create a payment record)
+        //     context.response.write('Selected payments processed: ' + JSON.stringify(selectedPayments));
+        //     context.response.write('<br/>Total Invoice Payments: ' + totalInvoicePayments.toFixed(2));
+        //     context.response.write('<br/>Total Debit Memo Payments: ' + totalDebitMemoPayments.toFixed(2));
+        //     context.response.write('<br/>Total Credit Memos Applied: ' + totalCreditMemosApplied.toFixed(2));
+        //     context.response.write('<br/>Total Payment Amount: ' + totalPaymentAmount.toFixed(2));
+        // }
     }
 
     function getOpenTransactions(customerId) {
@@ -345,6 +442,7 @@ function(ui, search, record, format) {
                 ['mainline', 'is', 'T']
             ],
             columns: [
+                'internalid',
                 'tranid',
                 'otherrefnum',
                 'type',
@@ -363,9 +461,11 @@ function(ui, search, record, format) {
             currentPage.data.forEach(function(result) {
                 var documentDate = result.getValue('trandate');
                 var dueDate = result.getValue('duedate');
-                var daysOverdue = calculateDaysOverdue(dueDate, today);
+                var daysOverdue = calculateDaysOverdue(dueDate, today, documentDate);
                 var amountRemaining = parseFloat(result.getValue('amountremaining'));
+
                 transactions.push({
+                    internalIdTransaction: result.getValue('internalid'),
                     documentNumber: result.getValue('tranid'),
                     poNumber: result.getValue('otherrefnum'),
                     transactionType: result.getText('type'),
@@ -389,15 +489,23 @@ function(ui, search, record, format) {
         return transactions;
     }
     
-    function calculateDaysOverdue(dueDate, today) {
+    function calculateDaysOverdue(dueDate, today, tranDateValue) {
         try{
 
-            if (!dueDate) return 0;
-            var due = new Date(dueDate);
-            var timeDiff = today - due;
-            //log.debug("timeDiff", timeDiff)
-            var daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
-            return daysDiff;
+            if (dueDate){
+                var due = new Date(dueDate);
+                var timeDiff = today - due;
+                //log.debug("timeDiff", timeDiff)
+                var daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+                return daysDiff;
+            }else{
+                var due = new Date(tranDateValue);
+                var timeDiff = today - due;
+                //log.debug("timeDiff", timeDiff)
+                var daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+                return daysDiff;
+            }
+            
 
         }catch(e){
             log.debug("error@calculateDaysOverdue", e)
